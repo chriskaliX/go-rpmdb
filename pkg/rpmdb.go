@@ -85,22 +85,22 @@ func (d *RpmDB) ListPackagesChan(ctx context.Context) <-chan *PackageInfo {
 	go func() {
 		defer close(c)
 		for entry := range d.db.Read() {
+			if entry.Err != nil {
+				return
+			}
+			indexEntries, err := headerImport(entry.Value)
+			if err != nil {
+				return
+			}
+			pkg, err := getNEVRA(indexEntries)
+			if err != nil {
+				return
+			}
 			select {
+			case c <- pkg:
+				break
 			case <-ctx.Done():
 				return
-			default:
-				if entry.Err != nil {
-					return
-				}
-				indexEntries, err := headerImport(entry.Value)
-				if err != nil {
-					return
-				}
-				pkg, err := getNEVRA(indexEntries)
-				if err != nil {
-					return
-				}
-				c <- pkg
 			}
 
 		}
