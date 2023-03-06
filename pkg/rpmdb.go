@@ -1,10 +1,12 @@
 package rpmdb
 
 import (
-	"github.com/knqyf263/go-rpmdb/pkg/bdb"
-	dbi "github.com/knqyf263/go-rpmdb/pkg/db"
-	"github.com/knqyf263/go-rpmdb/pkg/ndb"
-	"github.com/knqyf263/go-rpmdb/pkg/sqlite3"
+	"context"
+
+	"github.com/chriskaliX/go-rpmdb/pkg/bdb"
+	dbi "github.com/chriskaliX/go-rpmdb/pkg/db"
+	"github.com/chriskaliX/go-rpmdb/pkg/ndb"
+	"github.com/chriskaliX/go-rpmdb/pkg/sqlite3"
 	"golang.org/x/xerrors"
 )
 
@@ -76,4 +78,32 @@ func (d *RpmDB) ListPackages() ([]*PackageInfo, error) {
 	}
 
 	return pkgList, nil
+}
+
+func (d *RpmDB) ListPackagesChan(ctx context.Context) <-chan *PackageInfo {
+	c := make(chan *PackageInfo)
+	go func() {
+		defer close(c)
+		for entry := range d.db.Read() {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if entry.Err != nil {
+					return
+				}
+				indexEntries, err := headerImport(entry.Value)
+				if err != nil {
+					return
+				}
+				pkg, err := getNEVRA(indexEntries)
+				if err != nil {
+					return
+				}
+				c <- pkg
+			}
+
+		}
+	}()
+	return c
 }
