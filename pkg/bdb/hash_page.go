@@ -74,8 +74,10 @@ func HashPageValueContent(db *os.File, pageData []byte, hashPageIndex uint16, pa
 		var hashValueBytes []byte
 		if currentPage.NextPageNo == 0 {
 			// this is the last page, the whole page contains content
+			hashValueBytes = make([]byte, currentPage.FreeAreaOffset)
 			copy(hashValueBytes, currentPageBuff[PageHeaderSize:PageHeaderSize+currentPage.FreeAreaOffset])
 		} else {
+			hashValueBytes = make([]byte, len(currentPageBuff[PageHeaderSize:]))
 			copy(hashValueBytes, currentPageBuff[PageHeaderSize:])
 		}
 		internal.BufferPool.Put(currentPageBuff)
