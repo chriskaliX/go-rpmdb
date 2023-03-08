@@ -102,7 +102,6 @@ func (d *RpmDB) ListPackagesChan(ctx context.Context) <-chan *PackageInfo {
 			case <-ctx.Done():
 				return
 			}
-
 		}
 	}()
 	return c

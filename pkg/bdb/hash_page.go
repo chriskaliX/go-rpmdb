@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/chriskaliX/go-rpmdb/pkg/internal"
 	"golang.org/x/xerrors"
 )
 
@@ -73,13 +74,12 @@ func HashPageValueContent(db *os.File, pageData []byte, hashPageIndex uint16, pa
 		var hashValueBytes []byte
 		if currentPage.NextPageNo == 0 {
 			// this is the last page, the whole page contains content
-			hashValueBytes = currentPageBuff[PageHeaderSize : PageHeaderSize+currentPage.FreeAreaOffset]
+			copy(hashValueBytes, currentPageBuff[PageHeaderSize:PageHeaderSize+currentPage.FreeAreaOffset])
 		} else {
-			hashValueBytes = currentPageBuff[PageHeaderSize:]
+			copy(hashValueBytes, currentPageBuff[PageHeaderSize:])
 		}
-
+		internal.BufferPool.Put(currentPageBuff)
 		hashValue = append(hashValue, hashValueBytes...)
-
 		currentPageNo = currentPage.NextPageNo
 	}
 
@@ -111,7 +111,7 @@ func HashPageValueIndexes(data []byte, entries uint16, swapped bool) ([]uint16, 
 }
 
 func slice(reader io.Reader, n int) ([]byte, error) {
-	newBuff := make([]byte, n)
+	newBuff := internal.BufferPool.Get(int64(n))
 	numRead, err := reader.Read(newBuff)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read page: %w", err)
