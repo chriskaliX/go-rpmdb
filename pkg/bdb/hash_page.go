@@ -41,14 +41,16 @@ func HashPageValueContent(db *os.File, pageData []byte, hashPageIndex uint16, pa
 		return nil, xerrors.Errorf("only HOFFPAGE types supported (%+v)", valuePageType)
 	}
 
-	hashOffPageEntryBuff := pageData[hashPageIndex : hashPageIndex+HashOffPageSize]
+	var hashOffPageEntryBuff = internal.BufferPool.Get(int64(HashOffPageSize))
+	defer internal.BufferPool.Put(hashOffPageEntryBuff)
+	copy(hashOffPageEntryBuff, pageData[hashPageIndex:hashPageIndex+HashOffPageSize])
 
 	entry, err := ParseHashOffPageEntry(hashOffPageEntryBuff, swapped)
 	if err != nil {
 		return nil, err
 	}
 
-	var hashValue []byte
+	var hashValue []byte = make([]byte, 0, 1024*16)
 
 	for currentPageNo := entry.PageNo; currentPageNo != 0; {
 		pageStart := pageSize * currentPageNo
@@ -84,7 +86,6 @@ func HashPageValueContent(db *os.File, pageData []byte, hashPageIndex uint16, pa
 		hashValue = append(hashValue, hashValueBytes...)
 		currentPageNo = currentPage.NextPageNo
 	}
-
 	return hashValue, nil
 }
 
